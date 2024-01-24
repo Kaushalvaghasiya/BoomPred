@@ -1,0 +1,209 @@
+<!-- stock_search.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if stock.company_name is not none %}{{ stock.company_name }}{% else %}Search{% endif %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background-color: #1a1a1a !important; /* Dark background color */
+            color: #ffffff !important; /* Text color */
+            padding-top: 20px !important; /* Add space at the top */
+        }
+
+        h1, h2 {
+            color: #ffd700; /* Header text color */
+        }
+
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        #stockChart {
+            width: 80%;
+            margin: 20px auto;
+        }
+
+        .search-container {
+            margin-top: 20px;
+        }
+        .custom-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            border: 2px solid #3498db;
+            color: #ffffff;
+            background-color: #3498db;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .custom-btn:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+            color: #ffffff;
+        }
+
+        .custom-dropdown {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-color: #ffffff;
+            color: #333333;
+            cursor: pointer;
+        }
+
+        .custom-dropdown:hover {
+            border-color: #2980b9;
+        }
+
+        .custom-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <form method="get" action="{% url 'stock_details' %}" class="form-inline">
+                    <div class="form-group col-11">
+                        <h2 for="stock_symbol" class="col-5">Select Stock:</h2>
+                        <select id="stock_symbol" name="s" class="custom-dropdown form-control col-4" required>
+                            {% for st in stocks %}
+                                <option value="{{ st.stock_symbol }}">{{ st.stock_symbol }} - {{ st.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                
+                    <button type="submit" class="col-1 custom-btn">Search</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <br />
+    <br />
+    {% block content %}
+    {% endblock %}      
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Plotly JS -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            $('#stock_symbol').select2({
+                placeholder: 'Select or Enter Stock Symbol',
+                tags: true,
+                tokenSeparators: [',', ' '],
+            });
+        });
+        var dates = JSON.parse('{{ dates_json|safe }}');
+        var closingPrices = JSON.parse('{{ close_prices_json|safe }}');
+        var openingPrices = JSON.parse('{{ open_prices_json|safe }}');
+        var lowPrices = JSON.parse('{{ low_prices_json|safe }}');
+        var highPrices = JSON.parse('{{ high_prices_json|safe }}');
+    
+        var traceClose = {
+            x: dates,
+            y: closingPrices,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Closing Price',
+        };
+    
+        var traceOpen = {
+            x: dates,
+            y: openingPrices,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Opening Price',
+        };
+
+        var traceHigh = {
+            x: dates,
+            y: highPrices,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'High Price',
+            line: {
+                dash: 'solid',  // Set the line style to solid
+            },
+        };
+
+        var traceLow = {
+            x: dates,
+            y: lowPrices,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Low Price',
+            line: {
+                dash: 'solid',  // Set the line style to solid
+            },
+        };
+    
+        var layout = {
+            title: '{{ stock.company_name }} ({{ stock.stock_symbol }})',
+            xaxis: {
+                title: 'Date'
+            },
+            yaxis: {
+                title: 'Price'
+            },
+            paper_bgcolor: '#1a1a1a', /* Plot background color */
+            plot_bgcolor: '#1a1a1a', /* Plot area color */
+            font: {
+                color: '#ffffff' /* Plot text color */
+            },
+            height: 800,
+        };
+    
+        Plotly.newPlot('stockChart', [traceClose, traceOpen, traceHigh, traceLow], layout);
+        var traceCandle = {
+            x: ['2022-01-01', '2022-01-02', '2022-01-03', '2022-01-04'],
+            open: [150, 160, 140, 145],
+            high: [160, 170, 150, 155],
+            low: [140, 150, 130, 135],
+            close: [155, 165, 145, 150],
+            type: 'candlestick',
+            name: 'Candlestick Chart'
+        };
+
+        var layoutCandle = {
+            title: 'Candlestick Chart Example',
+            xaxis: {
+                title: 'Date'
+            },
+            yaxis: {
+                title: 'Price'
+            }
+        };
+
+        Plotly.newPlot('otherChart', [traceCandle], layoutCandle);
+    </script>
+</body>
+</html>

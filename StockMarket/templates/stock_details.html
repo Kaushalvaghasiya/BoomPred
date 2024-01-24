@@ -1,0 +1,25 @@
+{% extends 'stock_search.html' %}
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1>{{ stock.company_name }} ({{ stock.stock_symbol }})</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <ul>
+                    <li>Sector: {{ stock.sector }}</li>
+                    <li>Industry: {{ stock.industry }}</li>
+                </ul>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <h2>Price History</h2>
+            </div>
+        </div>
+    </div>
+    <div id="stockChart"></div>
+    <div id="otherChart"></div>
+{% endblock %}
