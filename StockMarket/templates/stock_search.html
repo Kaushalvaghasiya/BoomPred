@@ -96,6 +96,8 @@
                 
                     <button type="submit" class="col-1 custom-btn">Search</button>
                 </form>
+                {% if stock is not none %}<center><a href="{% url 'predict_stock' s=stock.stock_symbol %}" class="custom-btn">Predict {{ stock.stock_symbol }} Stock</a>
+                </center>{% endif %}
             </div>
         </div>
     </div>
@@ -127,83 +129,62 @@
         var openingPrices = JSON.parse('{{ open_prices_json|safe }}');
         var lowPrices = JSON.parse('{{ low_prices_json|safe }}');
         var highPrices = JSON.parse('{{ high_prices_json|safe }}');
-    
-        var traceClose = {
-            x: dates,
-            y: closingPrices,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Closing Price',
-        };
-    
-        var traceOpen = {
-            x: dates,
-            y: openingPrices,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Opening Price',
-        };
+        var volume = JSON.parse('{{ volume_json|safe }}');
+        var predictedPrices = JSON.parse('{{ predicted_prices_json|safe }}'); 
 
-        var traceHigh = {
-            x: dates,
-            y: highPrices,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'High Price',
-            line: {
-                dash: 'solid',  // Set the line style to solid
-            },
-        };
-
-        var traceLow = {
-            x: dates,
-            y: lowPrices,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Low Price',
-            line: {
-                dash: 'solid',  // Set the line style to solid
-            },
-        };
     
         var layout = {
             title: '{{ stock.company_name }} ({{ stock.stock_symbol }})',
             xaxis: {
-                title: 'Date'
+                title: 'Date',
+                rangeslider: { visible: true },
             },
             yaxis: {
-                title: 'Price'
+                title: 'Price',
             },
-            paper_bgcolor: '#1a1a1a', /* Plot background color */
-            plot_bgcolor: '#1a1a1a', /* Plot area color */
+            yaxis2: {
+                title: 'Volume',
+                overlaying: 'y',
+                side: 'right',
+            },
+            paper_bgcolor: '#1a1a1a',
+            plot_bgcolor: '#1a1a1a',
             font: {
-                color: '#ffffff' /* Plot text color */
+                color: '#ffffff'
             },
-            height: 800,
-        };
-    
-        Plotly.newPlot('stockChart', [traceClose, traceOpen, traceHigh, traceLow], layout);
-        var traceCandle = {
-            x: ['2022-01-01', '2022-01-02', '2022-01-03', '2022-01-04'],
-            open: [150, 160, 140, 145],
-            high: [160, 170, 150, 155],
-            low: [140, 150, 130, 135],
-            close: [155, 165, 145, 150],
-            type: 'candlestick',
-            name: 'Candlestick Chart'
+            height: 800
         };
 
-        var layoutCandle = {
-            title: 'Candlestick Chart Example',
-            xaxis: {
-                title: 'Date'
-            },
-            yaxis: {
-                title: 'Price'
+        var traceCandle = {
+            x: dates,
+            open: openingPrices,
+            high: highPrices,
+            low: lowPrices,
+            close: closingPrices,
+            type: 'candlestick',
+        };
+
+        var traceVolume = {
+            x: dates,
+            y: volume,
+            type: 'bar',
+            yaxis: 'y2',
+            name: 'Volume',
+            marker: { color: 'rgba(31,119,180,0.5)' },
+        };
+
+        var tracePredicted = { 
+            x: dates,
+            y: predictedPrices,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Predicted Price',
+            line: {
+                color: 'rgba(255,0,0,0.8)',
+                width: 2
             }
         };
-
-        Plotly.newPlot('otherChart', [traceCandle], layoutCandle);
+        Plotly.newPlot('stockChart', [traceCandle, traceVolume, tracePredicted], layout);
     </script>
 </body>
 </html>

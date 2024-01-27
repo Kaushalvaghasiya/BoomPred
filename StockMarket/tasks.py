@@ -9,7 +9,7 @@ def update_stock_data(stock_symbol):
     start_date = (latest_date + timedelta(days=1)).strftime('%Y-%m-%d')
 
     if start_date <= end_date:
-        stock_data = yf.download(stock_symbol, start=start_date, end=end_date)
+        stock_data = yf.download(stock.stock_symbol, start=start_date, end=end_date)
         for index, row in stock_data.iterrows():
             PriceHistory.objects.create(
                 stock=stock,

@@ -1,17 +1,27 @@
 import json
 from django.core.serializers.json import DjangoJSONEncoder
-from django.http import JsonResponse
-from django.shortcuts import render
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+import matplotlib.pyplot as plt
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.regularizers import l2
+from django.shortcuts import redirect, render
+from django.urls import reverse
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 import yfinance
-from .models import Stocks, PriceHistory
+from .models import PredictionResults, Stocks, PriceHistory
 
 def stock_details(request):
     stocks = Stocks.objects.all()
     try:
         stock_symbol = request.GET.get('s', '')
-        if stock_symbol is "":
+        if stock_symbol == "":
             return render(request, 'stock_details.html', {'stocks': stocks})
     except:
         return render(request, 'stock_details.html', {'stocks': stocks})
@@ -56,5 +66,74 @@ def stock_details(request):
     open_prices_json = json.dumps([float(price) for price in price_history.values_list('open_price', flat=True)], cls=DjangoJSONEncoder)
     low_prices_json = json.dumps([float(price) for price in price_history.values_list('low_price', flat=True)], cls=DjangoJSONEncoder)
     high_prices_json = json.dumps([float(price) for price in price_history.values_list('high_price', flat=True)], cls=DjangoJSONEncoder)
+    volume_json = json.dumps([float(price) for price in price_history.values_list('volume', flat=True)], cls=DjangoJSONEncoder)
+    predicted_prices = PredictionResults.objects.filter(stock=stock)
+    predicted_prices_json = json.dumps([float(price) for price in predicted_prices.values_list('predicted_price', flat=True)], cls=DjangoJSONEncoder)
 
-    return render(request, 'stock_details.html', {'stock': stock, 'dates_json': dates_json, 'close_prices_json': close_prices_json, 'open_prices_json': open_prices_json, 'low_prices_json': low_prices_json, 'high_prices_json': high_prices_json, 'stocks': stocks})
+    return render(request, 'stock_details.html', {'stock': stock, 'dates_json': dates_json, 'close_prices_json': close_prices_json, 'open_prices_json': open_prices_json, 'low_prices_json': low_prices_json, 'high_prices_json': high_prices_json, 'predicted_prices_json': predicted_prices_json, "volume_json": volume_json, 'stocks': stocks})
+
+def predict_stock(request, s):
+    stock = Stocks.objects.get(stock_symbol=s)
+    PredictionResults.objects.filter(stock=stock).delete()
+    price_history = PriceHistory.objects.filter(stock=stock)
+
+    data_dict = price_history.values()
+    df = pd.DataFrame.from_records(data_dict)
+    df['date'] = pd.to_datetime(df['date']).dt.tz_localize('UTC')
+    data = df['close_price'].values.reshape(-1, 1)
+    scaler = MinMaxScaler()
+    scaled_data = scaler.fit_transform(data)
+    sequence_length = 20
+    X, y = [], []
+    for i in range(len(scaled_data) - sequence_length):
+        seq = scaled_data[i:i + sequence_length]
+        label = scaled_data[i + sequence_length]
+        X.append(seq)
+        y.append(label)
+    X, y = np.array(X), np.array(y)
+    X = np.reshape(X, (X.shape[0], X.shape[1], 1))
+    model = Sequential()
+    model.add(LSTM(units=50, return_sequences=True, kernel_regularizer=l2(0.01), input_shape=(X.shape[1], 1)))
+    model.add(Dropout(0.2))
+    model.add(LSTM(units=50, return_sequences=True))
+    model.add(Dropout(0.2))
+    model.add(LSTM(units=50))
+    model.add(Dropout(0.2))
+    model.add(Dense(units=1))
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mean_absolute_error')
+
+    model.fit(X, y, epochs=2, batch_size=32)
+
+    # Make predictions on future data
+    # future_days = 20  # Number of days into the future you want to predict
+    # future_predictions = []
+
+    # for i in range(future_days):
+    #     last_sequence = scaled_data[-sequence_length:]
+    #     last_sequence = np.reshape(last_sequence, (1, sequence_length, 1))
+    #     next_prediction = model.predict(last_sequence)
+    #     future_predictions.append(next_prediction)
+    #     scaled_data = np.append(scaled_data, next_prediction, axis=0)
+
+    # # Inverse transform the predictions to get actual values
+    # future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
+
+    # # Generate future dates
+    # last_date = df['date'].max()
+    # future_dates = pd.date_range(start=last_date, periods=future_days + 1)[1:]
+
+    train_predictions = scaler.inverse_transform(model.predict(X))
+    train_dates = df['date'].iloc[sequence_length:sequence_length+len(train_predictions)]
+    model_used = 'RNN'
+
+    for date, prediction in zip(train_dates, train_predictions):
+        PredictionResults.objects.create(
+            stock=stock,
+            date=date,
+            predicted_price=float(prediction[0]),
+            confidence_level=0.0,
+            model_used=model_used,
+        )
+    
+    return redirect(reverse("stock_details")+ f'?s={stock.stock_symbol}')
+    
