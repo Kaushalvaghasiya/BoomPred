@@ -96,7 +96,16 @@
                 
                     <button type="submit" class="col-1 custom-btn">Search</button>
                 </form>
-                {% if stock is not none %}<center><a href="{% url 'predict_stock' s=stock.stock_symbol %}" class="custom-btn">Predict {{ stock.stock_symbol }} Stock</a>
+                {% if stock is not none %}
+                <center>
+                    <select class="form-select" id="dropdown">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                    <a href="#" id="predictLink" class="custom-btn">Predict {{ stock.stock_symbol }} Stock</a>
                 </center>{% endif %}
             </div>
         </div>
@@ -122,6 +131,13 @@
                 placeholder: 'Select or Enter Stock Symbol',
                 tags: true,
                 tokenSeparators: [',', ' '],
+            });
+            $('#predictLink').on('click', function (e) {
+                e.preventDefault();
+                var selectedValue = $('#dropdown').val();
+                var stockSymbol = "{{ stock.stock_symbol }}";
+                var url = "/predict_stock/" + stockSymbol + "/" + selectedValue + "/";
+                window.location.href = url;
             });
         });
         var dates = JSON.parse('{{ dates_json|safe }}');
