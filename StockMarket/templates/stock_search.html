@@ -8,38 +8,43 @@
     <style>
         body {
             background-color: #1a1a1a !important; /* Dark background color */
-            color: #ffffff !important; /* Text color */
-            padding-top: 20px !important; /* Add space at the top */
+            padding-top: 20px;
         }
-
+        .container *:not(.custom-dropdown, h1,h2) {
+            margin-top: 10px;
+            color: #ffffff;
+        }
         h1, h2 {
-            color: #ffd700; /* Header text color */
+            color: #ffd700;
         }
-
-
         ul {
             list-style-type: none;
             padding: 0;
         }
-
         li {
             margin-bottom: 10px;
         }
-
+        #sidebar {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        #sidebar a {
+            color: #ffffff;
+        }
+        #sidebar a:hover {
+            color: #007bff;
+        }
         #stockChart {
             width: 80%;
             margin: 20px auto;
         }
-
-        .search-container {
-            margin-top: 20px;
-        }
         .custom-btn {
-            display: inline-block;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 10px 20px;
             font-size: 16px;
             font-weight: bold;
-            text-align: center;
             text-decoration: none;
             cursor: pointer;
             border: 2px solid #3498db;
@@ -48,13 +53,11 @@
             border-radius: 5px;
             transition: background-color 0.3s, color 0.3s;
         }
-
         .custom-btn:hover {
             background-color: #2980b9;
             border-color: #2980b9;
             color: #ffffff;
         }
-
         .custom-dropdown {
             width: 100%;
             padding: 10px;
@@ -68,52 +71,115 @@
             color: #333333;
             cursor: pointer;
         }
-
         .custom-dropdown:hover {
             border-color: #2980b9;
         }
-
         .custom-dropdown:focus {
             outline: none;
             border-color: #3498db;
             box-shadow: 0 0 5px rgba(52, 152, 219, 0.7);
         }
+        .stock-list {
+            list-style: none;
+            padding: 0;
+        }
+        .text-left {
+            text-align: left !important;
+        }
+        .text-right {
+            text-align: right !important;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row">
-            <div class="col-12">
-                <form method="get" action="{% url 'stock_details' %}" class="form-inline">
-                    <div class="form-group col-11">
-                        <h2 for="stock_symbol" class="col-5">Select Stock:</h2>
-                        <select id="stock_symbol" name="s" class="custom-dropdown form-control col-4" required>
-                            {% for st in stocks %}
-                                <option value="{{ st.stock_symbol }}">{{ st.stock_symbol }} - {{ st.company_name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                
-                    <button type="submit" class="col-1 custom-btn">Search</button>
-                </form>
-                {% if stock is not none %}
-                <center>
-                    <select class="form-select" id="dropdown">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                    </select>
-                    <a href="#" id="predictLink" class="custom-btn">Predict {{ stock.stock_symbol }} Stock</a>
-                </center>{% endif %}
+    <div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block">
+            <div class="sidebar-sticky">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <h3>Stock List</h3>
+                        </a>
+                    </li>
+                    {% for st in stocks %}
+                        <li class="nav-item custom-btn" onclick="redirectToStockDetails('{{st.stock_symbol}}')">
+                            <span class="text-left">
+                                {{ st.stock_symbol }} - {{ st.company_name }}
+                            </span>
+                            <span class="text-right">
+                                ${{ st.last_closing_price }}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
             </div>
-        </div>
+        </nav>
+
+        <!-- Main content -->
+        <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <form method="get" action="{% url 'stock_details' %}" class="form-inline">
+                            <div class="form-group col-11">
+                                <h2 for="stock_symbol" class="col-5">Select Stock:</h2>
+                                <select id="stock_symbol" name="s" class="col-4" required>
+                                    {% for st in stocks %}
+                                        <option value="{{ st.stock_symbol }}" {% if st.stock_symbol == stock.stock_symbol %}selected{% endif %}>{{ st.stock_symbol }} - {{ st.company_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        
+                            <button type="submit" class="col-1 custom-btn">Search</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-4">
+                        {% if stock is not none %}
+                            <div>
+                                <label for="dropdown">Days:</label>
+                                <select class="custom-dropdown" id="dropdown">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                                <br />
+                                <button id="predictLink" class="custom-btn">Predict {{ stock.stock_symbol }} Stock</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-4">
+                        <div class="mb-3">
+                            <label for="cprice" class="form-label">Current Price:</label>
+                            <input type="text" class="custom-dropdown" id="cprice" name="cprice" placeholder="Current Price" required>
+                            <button class="custom-btn" type="button" id="refreshCPrice">Refresh Current price
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Price:</label>
+                            <input type="text" class="custom-dropdown" id="price" name="price" placeholder="Enter Price" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Quantity:</label>
+                            <input type="text" class="custom-dropdown" id="quantity" name="quantity" placeholder="Enter Quantity" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <br />
+            <br />
+            {% block content %}
+            {% endblock %}      
+        </main>
     </div>
-    <br />
-    <br />
-    {% block content %}
-    {% endblock %}      
+</div>
     <!-- Bootstrap JS and dependencies -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
@@ -127,10 +193,16 @@
     
     <script>
         $(document).ready(function() {
+            var lastClosingPrice = closingPrices[closingPrices.length - 1];
+            $('#price').val(lastClosingPrice);
+            $('#cprice').val(lastClosingPrice);
+            $('#quantity').val(1);
             $('#stock_symbol').select2({
                 placeholder: 'Select or Enter Stock Symbol',
                 tags: true,
                 tokenSeparators: [',', ' '],
+                theme: 'bootstrap-5',
+                width: '30%',
             });
             $('#predictLink').on('click', function (e) {
                 e.preventDefault();
@@ -139,7 +211,29 @@
                 var url = "/predict_stock/" + stockSymbol + "/" + selectedValue + "/";
                 window.location.href = url;
             });
+            $('#cprice').on('input', function () {
+                var cprice = parseFloat($(this).val()) || 0;
+                lastClosingPrice = cprice;
+                $('#quantity').trigger('input');
+            });
+            $('#price').on('input', function () {
+                var price = parseFloat($(this).val()) || 0;
+                $('#quantity').val((price / lastClosingPrice));
+            });
+            $('#quantity').on('input', function () {
+                var quantity = parseFloat($(this).val()) || 0;
+                $('#price').val((lastClosingPrice * quantity));
+            });
+            $('#refreshCPrice').on('click', function () {
+                lastClosingPrice = closingPrices[closingPrices.length - 1];
+                $('#cprice').val(lastClosingPrice);
+                $('#quantity').trigger('input');
+            });
         });
+        function redirectToStockDetails(selectedStock) {
+            var url = "{% url 'stock_details' %}?s=" + selectedStock;
+            window.location.href = url;
+        }
         var dates = JSON.parse('{{ dates_json|safe }}');
         var closingPrices = JSON.parse('{{ close_prices_json|safe }}');
         var openingPrices = JSON.parse('{{ open_prices_json|safe }}');

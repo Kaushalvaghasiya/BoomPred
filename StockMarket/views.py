@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import json
 from django.core.serializers.json import DjangoJSONEncoder
 import numpy as np
@@ -19,6 +20,15 @@ from .models import PredictionResults, Stocks, PriceHistory
 
 def stock_details(request):
     stocks = Stocks.objects.all()
+    for stock in stocks:
+        yesterday = datetime.now() - timedelta(days=1)
+        try:
+            yesterday_closing_price = PriceHistory.objects.filter(stock=stock, date=yesterday.date()).latest('date').close_price
+        except PriceHistory.DoesNotExist:
+            yesterday_closing_price = None
+        last_closing_price = PriceHistory.objects.filter(stock=stock).latest('date').close_price
+        stock.yesterday_closing_price = yesterday_closing_price
+        stock.last_closing_price = last_closing_price
     try:
         stock_symbol = request.GET.get('s', '')
         if stock_symbol == "":
@@ -56,6 +66,7 @@ def stock_details(request):
                     volume=row['Volume']
                 )
             print(f"Added historical data for {stock_symbol}")
+            return redirect(reverse("stock_details")+ f'?s={stock.stock_symbol}')
         except requests.exceptions.RequestException as e:
             return(f"Error fetching stock details for {stock_symbol}: {e}")
         except e:
